@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
 use crate::common::{
-    AtomicRMWCode, DataId, ExternDecl, ExternId, FunctionVisibility, ICond, Opcode, Ordering,
-    RawType, StaticData, SyncScope,
+    AtomicRMWCode, DataId, ExternDecl, ExternId, FCond, FloatKind, FunctionVisibility, ICond,
+    Opcode, Ordering, RawType, StaticData, SyncScope,
 };
 
 #[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -109,8 +109,15 @@ pub enum Value {
     GEP(RawType, ValueRef, SmallVec<[ValueRef; 3]>),
     Select(ValueRef, ValueRef, ValueRef),
     Icmp(ICond, ValueRef, ValueRef),
-    // Fcmp(FCond, FlatContValue, FlatContValue),
+    Fcmp(FCond, ValueRef, ValueRef),
     Compute(Opcode, SmallVec<[ValueRef; 4]>),
+    /// Convert between floating-point formats. The destination format is
+    /// explicit because this node does not carry a result type.
+    Convert {
+        value: ValueRef,
+        from: FloatKind,
+        to: FloatKind,
+    },
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]

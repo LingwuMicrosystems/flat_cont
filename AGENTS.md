@@ -25,7 +25,12 @@
 
 ## 架构
 - `src/common.rs` —— 两个 IR 层共享的类型（`RawType`、`Opcode`、`ICond`、
-  `StaticData`、各种 id 等）。
+  `FCond`、`StaticData`、各种 id 等）。
+- 标量类型：`RawType::Scalar(u16)` 只表示整数标量；浮点标量用
+  `RawType::Float(FloatKind)`（六种格式：F16/F32/F64/Bf16/P32/P64）。
+  `Vector` 的元素种类由 `elem_kind` 区分（整数或浮点）。
+- `FCond` 只对齐 ISA 直接编码的四个浮点比较（Eq/Ne/Lt/Gt）；`Ge`/`Le`、
+  ordered/unordered 与 NaN 语义待浮点数值契约确定后再扩展。
 - `src/basicblock.rs` —— 源 IR：`BasicBlockGraph` = 全局 `nodes` 池 + `bbs`；
   SSA 值引用该池。
 - `src/flatcont.rs` —— 目标 IR：由自包含 `FlatContinuation` 组成的 `Function`。

@@ -8,11 +8,51 @@ pub struct DataId(pub u32);
 #[repr(transparent)]
 pub struct ExternId(pub u32);
 
+/// Floating-point format of a scalar or vector element.
+///
+/// The six variants mirror the target ISA's FPU formats. `flat_cont` defines
+/// them locally so that the IR does not depend on the ISA crate.
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FloatKind {
+    F16,
+    F32,
+    F64,
+    Bf16,
+    P32,
+    P64,
+}
+
+impl FloatKind {
+    /// Storage width of this format in bits.
+    pub const fn bits(self) -> u16 {
+        match self {
+            Self::F16 | Self::Bf16 => 16,
+            Self::F32 | Self::P32 => 32,
+            Self::F64 | Self::P64 => 64,
+        }
+    }
+}
+
+/// Element kind of a [`RawType::Vector`].
+#[derive(Deserialize, Serialize, Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum ElemKind {
+    #[default]
+    Int,
+    Float(FloatKind),
+}
+
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RawType {
     Ptr,
+    /// Integer scalar of the given bit width.
     Scalar(u16),
-    Vector { elem_bits: u16 },
+    /// Floating-point scalar.
+    Float(FloatKind),
+    Vector {
+        elem_bits: u16,
+        #[serde(default)]
+        elem_kind: ElemKind,
+    },
     Array(u32, Box<RawType>),
     Struct(Vec<RawType>),
 }
@@ -107,6 +147,22 @@ pub enum Opcode {
     And,
     Or,
     Xor,
+    /// Unsigned integer minimum, or floating-point minimum.
+    Min,
+    /// Unsigned integer maximum, or floating-point maximum.
+    Max,
+    /// Signed integer minimum.
+    MinSign,
+    /// Signed integer maximum.
+    MaxSign,
+    /// Fused multiply-add: `a * b + c`.
+    Fma,
+    /// Fused multiply-subtract: `a * b - c`.
+    Fms,
+    /// Floating-point square root.
+    Sqrt,
+    /// Floating-point reciprocal square root.
+    Rsqrt,
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq, Hash)]
@@ -122,4 +178,18 @@ pub enum ICond {
     GeSign,
     LtSign,
     LeSign,
+}
+
+/// Floating-point comparison condition.
+///
+/// Deliberately smaller than [`ICond`]: it mirrors the target ISA's four
+/// floating-point compare instructions. Ordered/unordered predicates and
+/// `Ge`/`Le` are not modelled until the target's NaN contract is defined.
+#[derive(Deserialize, Serialize, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[repr(u16)]
+pub enum FCond {
+    Eq,
+    Ne,
+    Lt,
+    Gt,
 }

@@ -149,8 +149,15 @@ pub enum Node {
     GEP(RawType, Value, SmallVec<[Value; 3]>),
     Select(Value, Value, Value),
     Icmp(ICond, Value, Value),
-    // Fcmp(FCond, BbValue, BbValue),
+    Fcmp(FCond, Value, Value),
     Compute(Opcode, SmallVec<[Value; 4]>),
+    /// Convert between floating-point formats. The destination format is
+    /// explicit because this node does not carry a result type.
+    Convert {
+        value: Value,
+        from: FloatKind,
+        to: FloatKind,
+    },
     Proj(Value, u8),
     TokenMerge(Vec<Value>),
     Alloc(RawType),
