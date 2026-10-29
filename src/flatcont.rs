@@ -167,6 +167,13 @@ pub enum Effect {
         target: ValueRef,
         effect_args: Vec<EffectPath>,
         args: Vec<ValueRef>,
+        /// The call's result type, when the producer knows it.
+        ///
+        /// `None` means *unannotated*: the graph does not state what the call
+        /// returns. Consumers must resolve it (an external declaration, for
+        /// example) or reject the graph; they must not guess a width.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        result: Option<RawType>,
     },
     Alloc(RawType),
 }
