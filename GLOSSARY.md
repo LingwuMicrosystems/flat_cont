@@ -1,6 +1,6 @@
 # flat_cont
 
-The shared type and IR vocabulary for the flat-continuation program representation.
+The type and IR vocabulary for the flat-continuation program representation.
 
 ## Language
 
@@ -43,3 +43,15 @@ _Avoid_: cast, reinterpret
 **Opcode**:
 A generic operation mnemonic whose lowering depends on the operand types; float-only operations are separate opcodes.
 _Avoid_: instruction, ISA opcode
+
+**FlatContinuation**:
+A self-contained block of the IR: its value parameters, its effect parameters and effect list, its dataflow body, and one terminator.
+_Avoid_: basic block, function body
+
+**ValueRef**:
+A reference to an operand: a continuation parameter, a local dataflow value, a constant, a static data, an extern, a function, or the value an effect node produces.
+_Avoid_: operand, SSA value
+
+**EffectPath**:
+A reference to an effect token: a continuation effect parameter, an earlier effect node, a merge of several, or a fresh unbound root that declares the start of a new chain.
+_Avoid_: effect chain, effect value

@@ -1,0 +1,7 @@
+# Remove the BasicBlock source IR layer
+
+`flat_cont` used to define two IR layers — a `BasicBlockGraph` source IR and the flat continuation target IR — connected by a `bb2flatcont` conversion pass. Commit `e9661ba` rewrote the target IR without porting the pass, so the pass and its two tests kept referencing types that no longer existed, and the crate root commented the pass out to keep the library building. We deleted the source IR module, the pass, and both tests instead of porting them, because nothing outside the crate ever imported either one: all 85 external files that depend on `flat_cont` use only `common` and `flatcont`, and the downstream consumer documents the crate as read-only input IR.
+
+**Considered Options**: porting the pass to the rewritten IR (the effect model changed shape — `EffectPath` replaced the projection nodes — so this is a rewrite rather than a rename, and it would still build a converter that nothing calls); keeping the disabled module as a placeholder (it would advertise a capability the crate does not have); deleting it and letting any future converter live in the consumer that needs one (chosen).
+
+**Consequences**: `flat_cont` is now a pure IR definition crate — it defines `FlatContGraph` and serialises it, and nothing in it produces a graph. The IR itself has no behaviour-level tests; only the input-model tests remain. Dropping these public items is a breaking change, but every consumer is an unversioned path dependency and none of them referenced the removed items, so no build breaks.

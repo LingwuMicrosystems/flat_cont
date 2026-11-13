@@ -1,21 +1,12 @@
 # AGENTS.md
 
-`flat_cont`：一个 `no_std` Rust 库，核心作用是定义 “flat continuation” IR
-（`src/flatcont.rs` 的 `FlatContGraph`）。`basicblock`（源 IR）和 `bb2flatcont`
-（BBG->FlatCont 降级 pass，当前已禁用）是配套部分。
+`flat_cont`：一个 `no_std` Rust 库，定义 “flat continuation” IR（`src/flatcont.rs`
+的 `FlatContGraph`）。它只定义数据结构和序列化，不负责从别的 IR 降级进来。
 
 ## 构建 / 测试
-- `cargo build` / `cargo check` —— 仅 lib，可以编译。
-- `cargo test` 目前无法编译（见 “过渡状态”）。
-- 运行单个测试（修好后）：`cargo test --test test_linear_flow`。
-
-## 过渡状态（改测试或改 pass 前必读）
-- `src/bb2flatcont.rs` 已禁用：`src/lib.rs` 中 `pub mod bb2flatcont;` 被注释掉。
-- `flatcont.rs` 已重写为新 IR（`Value`、`ValueRef`、`Effect`、`EffectPath`、
-  `Function`、`ValueId`、`EffectId`）。`bb2flatcont.rs` 和两个 `tests/*.rs`
-  仍用旧 API（`flatcont::Node`、`flatcont::NodeId`、`Value::Node`、
-  `RawType::Token`、`FlatContinuation.nodes`），因此无法编译。
-- `RawType`（src/common.rs）没有 `Token` 变体；旧代码引用了它。
+- `cargo build` / `cargo check` —— 编译 lib。
+- `cargo test` —— 运行全部测试。
+- 运行单个测试：`cargo test --test test_input_model`。
 
 ## 约定
 - `#![no_std]`：集合类型从 `alloc::` 导入（`Vec`、`String`、`Box`），绝不用
@@ -24,25 +15,29 @@
   （`///`）。
 
 ## 架构
-- `src/common.rs` —— 两个 IR 层共享的类型（`RawType`、`Opcode`、`ICond`、
-  `FCond`、`StaticData`、各种 id 等）。
+- `src/common.rs` —— IR 引用的类型词表（`RawType`、`Opcode`、`ICond`、`FCond`、
+  `StaticData`、`DataId`、`ExternId` 等）。它描述的是名词，不是 IR 的形状。
+- id 分居两处：`DataId`/`ExternId` 在 `common`；`ContId`/`FunId`/`ValueId`/
+  `EffectId` 在 `flatcont`。
 - 标量类型：`RawType::Scalar(u16)` 只表示整数标量；浮点标量用
   `RawType::Float(FloatKind)`（六种格式：F16/F32/F64/Bf16/P32/P64）。
   `Vector` 的元素种类由 `elem_kind` 区分（整数或浮点）。
 - `FCond` 只对齐 ISA 直接编码的四个浮点比较（Eq/Ne/Lt/Gt）；`Ge`/`Le`、
   ordered/unordered 与 NaN 语义待浮点数值契约确定后再扩展。
-- `src/basicblock.rs` —— 源 IR：`BasicBlockGraph` = 全局 `nodes` 池 + `bbs`；
-  SSA 值引用该池。
-- `src/flatcont.rs` —— 目标 IR：由自包含 `FlatContinuation` 组成的 `Function`。
-- 每一层都定义自己的 `Value`、`ContId`、`Terminator`；不要混用。测试按层用别名
-  （`BbValue`/`FcValue`、`BbTerm`/`FcTerm`）。
-- `bb2flatcont::bb_to_flat_cont` 是 BBG->FlatCont pass：两遍 forward-fold
-  （Pass 1 把跨块依赖 push 到前驱 terminator args；Pass 2 通过 liveness
-  end-map 传播 + 裁剪），然后把全局 `NodeId` 重映射为 continuation 内的本地索引。
-- Effect token 走普通 SSA def-use 链；terminator args 里的 effect 名字仅用于调试，
-  不参与路由。计划中有去函数化 `BBG->BBG` pass（见 git 历史里的
-  `README.md`/`TODO.md`）。
+- `src/flatcont.rs` —— 唯一的 IR 层：每个 `Function` 由自包含的
+  `FlatContinuation` 组成，后者带值参数、effect 形参名与 effect 列表、
+  dataflow 主体和一个 terminator。
+- 操作数与 effect 是两套引用：`ValueRef` 指向值，`EffectPath` 指向 effect
+  token。没有独立的投影节点。
+- `EffectPath::Effect(EffectId)` 指向一个具体的 effect 节点，是路由与定序的
+  依据；`EffectPath::NewEffect(Option<String>)` 标记「此处起一条新的 effect
+  根」，不携带产生者 id，消费方按「无前驱依赖」处理。要指向某个 effect 节点时
+  必须用前者。
+- effect 的先后顺序由 `Effect(EffectId)` 与 `EffectMerge` 构成的引用链表达，
+  不由 `NewEffect` 表达。`NewEffect` 携带的名字仅用于调试，不参与路由。
+- 本 crate 没有把其他 IR 转换成 flat continuation 的 pass，也没有保留占位。
+  删除的原因见 `docs/adr/0002-remove-basicblock-layer.md`。
 
 ## 说明
-- `README.md` 和 `TODO.md`（中文设计文档）在工作树中已删除；可通过
-  `git show HEAD:README.md` 找回。
+- `README.md` 和 `TODO.md`（中文设计文档）是在提交 `a6ba7ac` 里删除的；可用
+  `git show a6ba7ac^:README.md` 找回。

@@ -1,7 +1,7 @@
 # Add a floating-point scalar kind without redefining `Scalar`
 
-`RawType::Scalar(u16)` was already understood as an integer scalar by both IR
-layers and every consumer, so we added `RawType::Float(FloatKind)` and put the
+`RawType::Scalar(u16)` was already understood as an integer scalar by the IR and
+every consumer, so we added `RawType::Float(FloatKind)` and put the
 kind on vector elements (`Vector { elem_bits, elem_kind }`) instead of replacing
 `Scalar` with a kind-tagged variant. `FloatKind` mirrors the six target FPU
 formats, while `FCond` only carries the four comparisons the target ISA encodes
