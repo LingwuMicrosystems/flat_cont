@@ -8,6 +8,14 @@
 - `cargo test` —— 运行全部测试。
 - 运行单个测试：`cargo test --test test_input_model`。
 
+CI 在 push 到 `main`、每个 PR 和手动触发时跑三道门禁，本地用同一组命令预判：
+
+- `cargo fmt --all -- --check`
+- `cargo clippy --all-targets --locked -- -D warnings`
+- `cargo test --locked`
+
+工具链版本由 `rust-toolchain.toml` 固定，workflow 不重复声明版本号。
+
 ## 约定
 - `#![no_std]`：集合类型从 `alloc::` 导入（`Vec`、`String`、`Box`），绝不用
   `std`。Edition 2024。

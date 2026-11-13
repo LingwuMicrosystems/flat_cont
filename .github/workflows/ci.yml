@@ -1,0 +1,53 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # A superseded pull-request run has no value, but a cancelled run on main would
+  # leave a commit with no completed verdict behind the required check. The run id
+  # keeps non-pull-request groups unique so a queued run is never silently dropped.
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.event_name == 'pull_request' && 'pr' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  ci:
+    # This name is the required status check. Renaming it would leave the branch
+    # protection rule pointing at a check that never reports.
+    name: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      # Incremental artifacts are worthless on a runner that is destroyed after
+      # the job, and the whole graph builds cold in a few seconds.
+      CARGO_INCREMENTAL: "0"
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # The toolchain file is the only place a version is written. Invoking a tool
+      # through rustup materialises it here, so a missing or wrong component fails
+      # at a step named for the toolchain rather than halfway through the gates.
+      - name: Resolve the pinned toolchain
+        run: |
+          rustup show
+          rustc --version --verbose
+          cargo fmt --version
+          cargo clippy --version
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Lint
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Test
+        run: cargo test --locked
