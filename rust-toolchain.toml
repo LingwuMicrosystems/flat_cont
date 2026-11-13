@@ -1,0 +1,8 @@
+# Single source of truth for the compiler, formatter, and linter.
+#
+# CI reads this file rather than declaring its own version, so upgrading the
+# toolchain is one reviewable edit and local runs match the required ci check.
+# Pinned to the version the sibling katabasis and asmlib-05isa checkouts use.
+[toolchain]
+channel = "1.94.0"
+components = ["rustfmt", "clippy"]
